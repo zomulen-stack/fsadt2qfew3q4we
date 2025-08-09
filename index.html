@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TonWarp - TON кошелек</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tonweb@0.0.50/dist/tonweb.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        /* Весь ваш CSS остаётся без изменений */
+        :root {
+            --primary: #0088cc;
+            --primary-dark: #00a2e8;
+            --bg: #f8f9fa;
+            --bg-dark: #121212;
+            --card-bg: #ffffff;
+            --card-bg-dark: #1e1e1e;
+            --text-primary: #1e1e1e;
+            --text-primary-dark: #ffffff;
+            --text-secondary: #6c757d;
+            --text-secondary-dark: #a0a0a0;
+            --border: #e9ecef;
+            --border-dark: #2d2d2d;
+            --positive: #28a745;
+            --negative: #dc3545;
+            --shadow: 0 2px 4px rgba(0,0,0,0.05);
+            --shadow-dark: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-primary);
+            padding-bottom: 100px;
+        }
+
+        body.dark-theme {
+            background-color: var(--bg-dark);
+            color: var(--text-primary-dark);
+        }
+
+        .header {
+            padding: 16px;
+            text-align: center;
+            position: relative;
+            background-color: var(--card-bg);
+            box-shadow: var(--shadow);
+        }
+
+        .dark-theme .header {
+            background-color: var(--card-bg-dark);
+            box-shadow: var(--shadow-dark);
+        }
+
+        .app-title {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #0088cc, #00a2e8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            display: inline-block;
+        }
+
+        .dark-theme .app-title {
+            background: linear-gradient(135deg, #00a2e8, #0088cc);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+        .wallet-card {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 16px;
+            box-shadow: 0 4px 12px rgba(0, 136, 204, 0.15);
+        }
+
+        .wallet-name {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+
+        .wallet-balance {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .wallet-address {
+            font-size: 12px;
+            opacity: 0.7;
+            word-break: break-all;
+            margin-bottom: 16px;
+        }
+
+        .actions-section {
+            margin: 24px 16px;
+        }
+
+        .action-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            gap: 12px;
+        }
+
+        .action-btn {
+            flex: 1;
+            background-color: var(--card-bg);
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .dark-theme .action-btn {
+            background-color: var(--card-bg-dark);
+            color: var(--text-primary-dark);
+            box-shadow: var(--shadow-dark);
+        }
+
+        .action-btn:active {
+            transform: scale(0.98);
+        }
+
+        .action-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: var(--primary);
+        }
+
+        .send-icon {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230088cc'%3E%3Cpath d='M2.01 21L23 12 2.01 3 2 10l15 2-15 2z'/%3E%3C/svg%3E") no-repeat center;
+        }
+
+        .receive-icon {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230088cc'%3E%3Cpath d='M21.99 3L1 12l20.99 9L22 14l-15-2 15-2z'/%3E%3C/svg%3E") no-repeat center;
+        }
+
+        .scan-icon {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230088cc'%3E%3Cpath d='M4 4h4V2H2v6h2V4zm16-2h-4v2h4v4h2V2zM4 20v-4H2v6h6v-2H4zm16-4h-2v4h-4v2h6v-6z'/%3E%3C/svg%3E") no-repeat center;
+        }
+
+        .exchange-icon {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230088cc'%3E%3Cpath d='M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z'/%3E%3C/svg%3E") no-repeat center;
+        }
+
+        .buy-icon {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230088cc'%3E%3Cpath d='M12 2L4 7v10l8 5 8-5V7l-8-5zm0 15l-6-3.5V9l6 3.5V17zm1-3.5L19 9v4.5L13 17v-3.5z'/%3E%3C/svg%3E") no-repeat center;
+        }
+
+        .stake-icon {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230088cc'%3E%3Cpath d='M12 2L4 7v10l8 5 8-5V7l-8-5zm0 15l-6-3.5V9l6 3.5V17zm1-3.5L19 9v4.5L13 17v-3.5z'/%3E%3C/svg%3E") no-repeat center;
+            transform: rotate(180deg);
+        }
+
+        .assets-header {
+            padding: 16px 16px 8px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .dark-theme .assets-header {
+            color: var(--text-primary-dark);
+        }
+
+        .asset-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            margin: 8px 16px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            cursor: pointer;
+        }
+
+        .dark-theme .asset-card {
+            background-color: var(--card-bg-dark);
+            box-shadow: var(--shadow-dark);
+        }
+
+        .asset-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .asset-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+        }
+
+        .asset-name {
+            font-weight: 600;
+        }
+
+        .dark-theme .asset-name {
+            color: var(--text-primary-dark);
+        }
+
+        .asset-amount {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .dark-theme .asset-amount {
+            color: var(--text-secondary-dark);
+        }
+
+        .asset-value {
+            text-align: right;
+        }
+
+        .asset-price {
+            font-weight: 600;
+        }
+
+        .dark-theme .asset-price {
+            color: var(--text-primary-dark);
+        }
+
+        .asset-change {
+            font-size: 12px;
+            color: var(--positive);
+        }
+
+        .asset-change.negative {
+            color: var(--negative);
+        }
+
+        .chart-container {
+            padding: 16px;
+            margin: 16px;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            display: none;
+        }
+
+        .dark-theme .chart-container {
+            background-color: var(--card-bg-dark);
+            box-shadow: var(--shadow-dark);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .chart-title {
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .chart-period {
+            display: flex;
+            gap: 8px;
+        }
+
+        .period-btn {
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: none;
+            background-color: var(--bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .dark-theme .period-btn {
+            background-color: var(--bg-dark);
+            color: var(--text-primary-dark);
+        }
+
+        .period-btn.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--card-bg);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+        }
+
+        .dark-theme .bottom-nav {
+            background-color: var(--card-bg-dark);
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.2);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .dark-theme .nav-item {
+            color: var(--text-secondary-dark);
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .dark-theme .nav-item.active {
+            color: var(--primary-dark);
+        }
+
+        .nav-icon {
+            font-size: 20px;
+        }
+
+        .add-asset-btn {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Модальные окна */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            width: 90%;
+            max-width: 400px;
+            border-radius: 16px;
+            padding: 20px;
+            animation: modalFadeIn 0.3s;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .dark-theme .modal-content {
+            background-color: var(--card-bg-dark);
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .dark-theme .modal-title {
+            color: var(--text-primary-dark);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .dark-theme .close-modal {
+            color: var(--text-secondary-dark);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .dark-theme .form-label {
+            color: var(--text-secondary-dark);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            background-color: white;
+            color: var(--text-primary);
+        }
+
+        .dark-theme .form-input {
+            background-color: var(--card-bg-dark);
+            border-color: var(--border-dark);
+            color: var(--text-primary-dark);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            background-color: white;
+            color: var(--text-primary);
+        }
+
+        .dark-theme .form-select {
+            background-color: var(--card-bg-dark);
+            border-color: var(--border-dark);
+            color: var(--text-primary-dark);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            margin-top: 8px;
+            cursor: pointer;
+        }
+
+        .ton-icon {
+            background: linear-gradient(135deg, #0088cc, #00a2e8);
+        }
+
+        .usdt-icon {
+            background: linear-gradient(135deg, #26a17b, #2ebd94);
+        }
+
+        .btc-icon {
+            background: linear-gradient(135deg, #f7931a, #ffac33);
+        }
+
+        .eth-icon {
+            background: linear-gradient(135deg, #627eea, #829bf2);
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--card-bg);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            z-index: 10;
+        }
+
+        .dark-theme .theme-toggle {
+            background-color: var(--card-bg-dark);
+            box-shadow: var(--shadow-dark);
+        }
+
+        .theme-toggle i {
+            font-size: 20px;
+            color: var(--text-primary);
+        }
+
+        .dark-theme .theme-toggle i {
+            color: var(--text-primary-dark);
+        }
+
+        /* Админ-панель */
+        .admin-section {
+            display: none;
+            padding: 16px;
+        }
+        
+        .admin-panel {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+        
+        .dark-theme .admin-panel {
+            background-color: var(--card-bg-dark);
+            box-shadow: var(--shadow-dark);
+        }
+        
+        .admin-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--primary);
+        }
+        
+        .admin-form-group {
+            margin-bottom: 16px;
+        }
+        
+        .admin-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .admin-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            background-color: var(--bg);
+            color: var(--text-primary);
+        }
+        
+        .dark-theme .admin-input {
+            background-color: var(--bg-dark);
+            border-color: var(--border-dark);
+            color: var(--text-primary-dark);
+        }
+        
+        .admin-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        
+        .admin-btn:hover {
+            opacity: 0.9;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .secret-access-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        /* QR код */
+        .qr-code-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            margin: 20px 0;
+            background-color: white;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        /* История транзакций */
+        .transaction-list {
+            margin: 16px;
+        }
+
+        .transaction-item {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dark-theme .transaction-item {
+            background-color: var(--card-bg-dark);
+            box-shadow: var(--shadow-dark);
+        }
+
+        .transaction-info {
+            flex: 1;
+        }
+
+        .transaction-amount {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .transaction-amount.positive {
+            color: var(--positive);
+        }
+
+        .transaction-amount.negative {
+            color: var(--negative);
+        }
+
+        .transaction-date {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .dark-theme .transaction-date {
+            color: var(--text-secondary-dark);
+        }
+
+        .transaction-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(0, 136, 204, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+        }
+
+        /* Страница отправки */
+        .send-form {
+            padding: 16px;
+        }
+
+        .amount-input {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .currency-selector {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .dark-theme .currency-selector {
+            color: var(--primary-dark);
+        }
+
+        /* Настройки */
+        .settings-item {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 8px 16px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .dark-theme .settings-item {
+            background-color: var(--card-bg-dark);
+            box-shadow: var(--shadow-dark);
+        }
+
+        .settings-item i {
+            color: var(--text-secondary);
+        }
+
+        .dark-theme .settings-item i {
+            color: var(--text-secondary-dark);
+        }
+
+        /* Индикатор загрузки */
+        .loader {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--primary);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Уведомления */
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--card-bg);
+            color: var(--text-primary);
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            animation: slideIn 0.3s, fadeOut 0.5s 2.5s forwards;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dark-theme .notification {
+            background-color: var(--card-bg-dark);
+            color: var(--text-primary-dark);
+            box-shadow: var(--shadow-dark);
+        }
+
+        .notification.success {
+            border-left: 4px solid var(--positive);
+        }
+
+        .notification.error {
+            border-left: 4px solid var(--negative);
+        }
+
+        @keyframes slideIn {
+            from { top: -100px; opacity: 0; }
+            to { top: 20px; opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <button class="theme-toggle" id="themeToggle">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <div class="header">
+        <h1 class="app-title">TonWarp</h1>
+    </div>
+
+    <!-- Основной контент (меняется в зависимости от страницы) -->
+    <div id="mainContent">
+        <!-- Кошелек (главная страница) -->
+        <div id="walletPage" class="page-content">
+            <div class="wallet-card">
+                <div class="wallet-name">Основной кошелек</div>
+                <div class="wallet-balance" id="totalBalance">0.00 $</div>
+                <div class="wallet-address" id="walletAddress">Загрузка...</div>
+            </div>
+
+            <div class="actions-section">
+                <div class="action-row">
+                    <button class="action-btn" id="sendBtn">
+                        <div class="action-icon send-icon"></div>
+                        Отправить
+                    </button>
+                    <button class="action-btn" id="receiveBtn">
+                        <div class="action-icon receive-icon"></div>
+                        Получить
+                    </button>
+                    <button class="action-btn" id="scanBtn">
+                        <div class="action-icon scan-icon"></div>
+                        Сканировать
+                    </button>
+                </div>
+                
+                <div class="action-row">
+                    <button class="action-btn" id="exchangeBtn">
+                        <div class="action-icon exchange-icon"></div>
+                        Обменять
+                    </button>
+                    <button class="action-btn" id="buyBtn">
+                        <div class="action-icon buy-icon"></div>
+                        Купить TON
+                    </button>
+                    <button class="action-btn" id="stakeBtn">
+                        <div class="action-icon stake-icon"></div>
+                        Застейкать
+                    </button>
+                </div>
+            </div>
+
+            <div class="assets-header">Мои активы</div>
+
+            <div id="assetsList">
+                <!-- Активы будут загружены динамически -->
+                <div class="loader" id="assetsLoader"></div>
+            </div>
+
+            <div class="chart-container" id="priceChartContainer">
+                <div class="chart-header">
+                    <div class="chart-title" id="chartTitle">График TON</div>
+                    <div class="chart-period">
+                        <button class="period-btn active" data-period="24h">24ч</button>
+                        <button class="period-btn" data-period="7d">7д</button>
+                        <button class="period-btn" data-period="30d">30д</button>
+                    </div>
+                </div>
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- История транзакций -->
+        <div id="historyPage" class="page-content" style="display: none;">
+            <div class="assets-header">История транзакций</div>
+            <div id="transactionsList">
+                <div class="loader" id="transactionsLoader"></div>
+            </div>
+        </div>
+
+        <!-- Браузер dApps -->
+        <div id="browserPage" class="page-content" style="display: none;">
+            <div class="assets-header">Браузер dApps</div>
+            <div style="padding: 16px; text-align: center; color: var(--text-secondary);">
+                <i class="fas fa-compass" style="font-size: 48px; margin-bottom: 16px;"></i>
+                <p>Здесь будет браузер децентрализованных приложений TON</p>
+            </div>
+        </div>
+
+        <!-- Настройки -->
+        <div id="settingsPage" class="page-content" style="display: none;">
+            <div class="assets-header">Настройки</div>
+            
+            <div class="settings-item" id="backupWalletBtn">
+                <div>
+                    <div style="font-weight: 500;">Резервная копия кошелька</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Сохраните seed-фразу</div>
+                </div>
+                <i class="fas fa-chevron-right"></i>
+            </div>
+            
+            <div class="settings-item" id="securitySettingsBtn">
+                <div>
+                    <div style="font-weight: 500;">Безопасность</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Настройки безопасности</div>
+                </div>
+                <i class="fas fa-chevron-right"></i>
+            </div>
+            
+            <div class="settings-item" id="networkSettingsBtn">
+                <div>
+                    <div style="font-weight: 500;">Сеть</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Настройки сети</div>
+                </div>
+                <i class="fas fa-chevron-right"></i>
+            </div>
+            
+            <div class="settings-item" id="aboutAppBtn">
+                <div>
+                    <div style="font-weight: 500;">О приложении</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Версия 1.0.0</div>
+                </div>
+                <i class="fas fa-chevron-right"></i>
+            </div>
+        </div>
+    </div>
+
+    <button class="add-asset-btn" id="openModal">+</button>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" data-page="wallet">
+            <div class="nav-icon"><i class="fas fa-wallet"></i></div>
+            <div>Кошелёк</div>
+        </div>
+        <div class="nav-item" data-page="history">
+            <div class="nav-icon"><i class="fas fa-history"></i></div>
+            <div>История</div>
+        </div>
+        <div class="nav-item" data-page="browser">
+            <div class="nav-icon"><i class="fas fa-compass"></i></div>
+            <div>Браузер</div>
+        </div>
+        <div class="nav-item" data-page="settings">
+            <div class="nav-icon"><i class="fas fa-cog"></i></div>
+            <div>Настройки</div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для добавления актива -->
+    <div class="modal" id="assetModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Добавить актив</div>
+                <button class="close-modal" id="closeModal">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="assetType">Криптовалюта</label>
+                <select class="form-select" id="assetType">
+                    <option value="TON">Toncoin (TON)</option>
+                    <option value="BTC">Bitcoin (BTC)</option>
+                    <option value="ETH">Ethereum (ETH)</option>
+                    <option value="USDT">Tether (USDT)</option>
+                    <option value="OTHER">Другая</option>
+                </select>
+            </div>
+            <div class="form-group" id="customAssetGroup" style="display: none;">
+                <label class="form-label" for="customAsset">Название</label>
+                <input class="form-input" type="text" id="customAsset" placeholder="Введите название">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="assetAmount">Количество</label>
+                <input class="form-input" type="number" id="assetAmount" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="assetPrice">Цена покупки ($)</label>
+                <input class="form-input" type="number" id="assetPrice" placeholder="0.00">
+            </div>
+            <button class="submit-btn" id="addAsset">Добавить</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно для получения средств -->
+    <div class="modal" id="receiveModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Получить TON</div>
+                <button class="close-modal" id="closeReceiveModal">×</button>
+            </div>
+            <div class="qr-code-container">
+                <div id="qrCode" class="qr-code"></div>
+                <div class="wallet-address" id="receiveAddress" style="text-align: center; color: var(--text-primary);"></div>
+                <button class="submit-btn" id="copyAddressBtn" style="margin-top: 20px;">
+                    <i class="fas fa-copy"></i> Копировать адрес
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для отправки средств -->
+    <div class="modal" id="sendModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Отправить TON</div>
+                <button class="close-modal" id="closeSendModal">×</button>
+            </div>
+            <div class="send-form">
+                <div class="form-group">
+                    <label class="form-label" for="recipientAddress">Адрес получателя</label>
+                    <input class="form-input" type="text" id="recipientAddress" placeholder="Введите адрес или имя">
+                </div>
+                <div class="form-group amount-input">
+                    <label class="form-label" for="sendAmount">Сумма</label>
+                    <input class="form-input" type="number" id="sendAmount" placeholder="0.00">
+                    <button class="currency-selector" id="maxAmountBtn">MAX</button>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="sendComment">Комментарий (необязательно)</label>
+                    <input class="form-input" type="text" id="sendComment" placeholder="Добавьте комментарий">
+                </div>
+                <div style="margin: 20px 0; padding: 12px; background-color: rgba(0, 136, 204, 0.1); border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-secondary);">Комиссия:</span>
+                        <span id="feeAmount">≈ 0.05 TON</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-secondary);">Итого:</span>
+                        <span id="totalSendAmount">0.00 TON</span>
+                    </div>
+                </div>
+                <button class="submit-btn" id="confirmSendBtn">Подтвердить отправку</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для резервного копирования -->
+    <div class="modal" id="backupModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Резервная копия кошелька</div>
+                <button class="close-modal" id="closeBackupModal">×</button>
+            </div>
+            <div style="padding: 16px;">
+                <p style="margin-bottom: 16px; color: var(--text-secondary);">Запишите эти 24 слова в правильном порядке и храните в безопасном месте. Эти слова нужны для восстановления доступа к вашему кошельку.</p>
+                
+                <div id="seedPhrase" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px;">
+                    <!-- Seed-фраза будет добавлена динамически -->
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <input type="checkbox" id="backupConfirmed">
+                    <label for="backupConfirmed" style="margin-left: 8px; color: var(--text-secondary);">Я сохранил seed-фразу в безопасном месте</label>
+                </div>
+                
+                <button class="submit-btn" id="copySeedBtn" disabled>
+                    <i class="fas fa-copy"></i> Копировать seed-фразу
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Секция админ-панели -->
+    <div class="admin-section" id="adminSection">
+        <div class="admin-panel">
+            <h2 class="admin-title">Админ-панель TonWarp</h2>
+            
+            <div class="admin-form-group">
+                <label class="admin-label">Установить баланс TON</label>
+                <input type="number" class="admin-input" id="adminSetTon" placeholder="Введите количество TON">
+                <button class="admin-btn" id="setTonBtn">Установить</button>
+            </div>
+            
+            <div class="admin-form-group">
+                <label class="admin-label">Установить баланс USDT</label>
+                <input type="number" class="admin-input" id="adminSetUsdt" placeholder="Введите количество USDT">
+                <button class="admin-btn" id="setUsdtBtn">Установить</button>
+            </div>
+            
+            <div class="admin-form-group">
+                <label class="admin-label">Установить курс TON (USD)</label>
+                <input type="number" step="0.01" class="admin-input" id="adminSetTonPrice" placeholder="Введите цену 1 TON">
+                <button class="admin-btn" id="setTonPriceBtn">Установить</button>
+            </div>
+            
+            <div class="admin-form-group">
+                <label class="admin-label">Добавить транзакцию</label>
+                <select class="admin-input" id="adminTxType">
+                    <option value="deposit">Пополнение</option>
+                    <option value="withdraw">Списание</option>
+                </select>
+                <input type="number" step="0.01" class="admin-input" id="adminTxAmount" placeholder="Сумма">
+                <input type="text" class="admin-input" id="adminTxDescription" placeholder="Описание">
+                <button class="admin-btn" id="addTxBtn">Добавить</button>
+            </div>
+            
+            <button class="admin-btn" id="closeAdminPanel">Закрыть админ-панель</button>
+        </div>
+    </div>
+
+    <!-- Секретная кнопка для доступа к админке -->
+    <button class="secret-access-btn hidden" id="secretAdminBtn">
+        <i class="fas fa-lock"></i>
+    </button>
+
+    <script>
+        // Конфигурация TON
+        const TON_API_KEY = '460a1afe75105bc2fd6e0a47eaf134fd398a2528ea62f6230ea6861e3c2f9cbe'; // Получите на toncenter.com
+        const TON_API_URL = 'https://toncenter.com/api/v2/jsonRPC';
+        
+        // Инициализация TON
+        const TonWeb = window.TonWeb;
+        const tonweb = new TonWeb(new TonWeb.HttpProvider(TON_API_URL, { apiKey: TON_API_KEY }));
+        
+        // Состояние приложения
+        const state = {
+            wallet: null,
+            tonPrice: 3.34,
+            isDarkTheme: localStorage.getItem('theme') === 'dark',
+            currentPage: 'wallet',
+            db: null
+        };
+
+        // Инициализация базы данных
+        function initDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('TONWalletDB', 1);
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains('wallets')) {
+                        db.createObjectStore('wallets', { keyPath: 'id' });
+                    }
+                };
+                
+                request.onsuccess = (event) => {
+                    state.db = event.target.result;
+                    resolve();
+                };
+                
+                request.onerror = (event) => {
+                    reject('Ошибка базы данных: ' + event.target.error);
+                };
+            });
+        }
+
+        // Генерация нового кошелька
+        async function generateNewWallet() {
+            const mnemonic = TonWeb.utils.nacl.randomBytes(32);
+            const keyPair = TonWeb.Mnemonic.mnemonicToKeyPair(mnemonic);
+            
+            const WalletClass = tonweb.wallet.all.v3R2;
+            const wallet = new WalletClass(tonweb.provider, {
+                publicKey: keyPair.publicKey,
+                wc: 0
+            });
+            
+            const address = await wallet.getAddress();
+            
+            return {
+                version: 1,
+                mnemonic: TonWeb.utils.bytesToHex(mnemonic),
+                keyPair: {
+                    publicKey: TonWeb.utils.bytesToHex(keyPair.publicKey),
+                    secretKey: TonWeb.utils.bytesToHex(keyPair.secretKey)
+                },
+                address: address.toString(true, true, true),
+                createdAt: new Date().toISOString(),
+                assets: [
+                    { symbol: 'TON', name: 'Toncoin', amount: 0, price: 0, change: 0 },
+                    { symbol: 'USDT', name: 'Tether', amount: 0, price: 1.00, change: 0 }
+                ],
+                transactions: []
+            };
+        }
+
+        // Сохранение кошелька
+        async function saveWallet(walletData) {
+            return new Promise((resolve, reject) => {
+                const tx = state.db.transaction('wallets', 'readwrite');
+                const store = tx.objectStore('wallets');
+                
+                // Шифруем чувствительные данные
+                const encryptedData = {
+                    ...walletData,
+                    keyPair: {
+                        publicKey: walletData.keyPair.publicKey,
+                        secretKey: CryptoJS.AES.encrypt(walletData.keyPair.secretKey, 'user-password').toString()
+                    },
+                    mnemonic: CryptoJS.AES.encrypt(walletData.mnemonic, 'user-password').toString()
+                };
+                
+                const request = store.put({
+                    id: 1,
+                    data: encryptedData,
+                    updatedAt: new Date().toISOString()
+                });
+                
+                request.onsuccess = () => resolve();
+                request.onerror = (e) => reject(e);
+            });
+        }
+
+        // Загрузка кошелька
+        async function loadWallet() {
+            return new Promise((resolve, reject) => {
+                const tx = state.db.transaction('wallets', 'readonly');
+                const store = tx.objectStore('wallets');
+                
+                const request = store.get(1);
+                
+                request.onsuccess = () => {
+                    if (!request.result) {
+                        resolve(null);
+                        return;
+                    }
+                    
+                    try {
+                        // Расшифровываем данные
+                        const decrypted = {
+                            ...request.result.data,
+                            keyPair: {
+                                publicKey: request.result.data.keyPair.publicKey,
+                                secretKey: CryptoJS.AES.decrypt(request.result.data.keyPair.secretKey, 'user-password').toString(CryptoJS.enc.Utf8)
+                            },
+                            mnemonic: CryptoJS.AES.decrypt(request.result.data.mnemonic, 'user-password').toString(CryptoJS.enc.Utf8)
+                        };
+                        
+                        resolve(decrypted);
+                    } catch (e) {
+                        reject('Ошибка расшифровки данных');
+                    }
+                };
+                
+                request.onerror = (e) => reject(e);
+            });
+        }
+
+        // Получение баланса
+        async function getBalance(address) {
+            try {
+                const balance = await tonweb.getBalance(address);
+                return TonWeb.utils.fromNano(balance);
+            } catch (e) {
+                console.error('Ошибка получения баланса:', e);
+                return '0';
+            }
+        }
+
+        // Отправка транзакции
+        async function sendTransaction(toAddress, amount, secretKey, comment = '') {
+            const wallet = new tonweb.wallet.all.v3R2(tonweb.provider, {
+                publicKey: TonWeb.utils.hexToBytes(secretKey.publicKey),
+                wc: 0
+            });
+            
+            const seqno = await wallet.methods.seqno().call();
+            const amountNano = TonWeb.utils.toNano(amount.toString());
+            
+            let payload = null;
+            if (comment && comment.trim() !== '') {
+                payload = TonWeb.utils.stringToBytes(comment);
+            }
+            
+            const transfer = wallet.methods.transfer({
+                secretKey: TonWeb.utils.hexToBytes(secretKey.secretKey),
+                toAddress: toAddress,
+                amount: amountNano,
+                seqno: seqno || 0,
+                payload: payload
+            });
+            
+            return await transfer.send();
+        }
+
+        // Инициализация кошелька
+        async function initWallet() {
+            try {
+                await initDatabase();
+                const savedWallet = await loadWallet();
+                
+                if (savedWallet) {
+                    state.wallet = savedWallet;
+                } else {
+                    state.wallet = await generateNewWallet();
+                    await saveWallet(state.wallet);
+                    
+                    // Показываем seed-фразу только при первом создании
+                    showSeedPhrase(state.wallet);
+                }
+                
+                // Обновляем UI
+                updateUI();
+                
+            } catch (error) {
+                console.error('Ошибка инициализации кошелька:', error);
+                showNotification('Ошибка загрузки кошелька', 'error');
+            }
+        }
+
+        // Показ seed-фразы
+        function showSeedPhrase(wallet) {
+            const mnemonic = TonWeb.Mnemonic.bytesToMnemonic(
+                TonWeb.utils.hexToBytes(wallet.mnemonic)
+            ).join(' ');
+            
+            alert('ВАША SEED-ФРАЗА (СОХРАНИТЕ В БЕЗОПАСНОМ МЕСТЕ!):\n\n' + mnemonic);
+        }
+
+        // Обновление интерфейса
+        async function updateUI() {
+            if (!state.wallet) return;
+            
+            // Обновляем баланс
+            const balance = await getBalance(state.wallet.address);
+            document.getElementById('totalBalance').textContent = balance + ' TON';
+            document.getElementById('walletAddress').textContent = state.wallet.address;
+            
+            // Обновляем активы
+            renderAssets();
+            
+            // Обновляем историю транзакций
+            renderTransactions();
+            
+            // Генерируем QR-код
+            generateQRCode();
+        }
+
+        // Рендер активов
+        function renderAssets() {
+            const assetsList = document.getElementById('assetsList');
+            assetsList.innerHTML = '';
+            
+            state.wallet.assets.forEach(asset => {
+                const assetElement = document.createElement('div');
+                assetElement.className = 'asset-card';
+                assetElement.id = `${asset.symbol.toLowerCase()}Asset`;
+                assetElement.innerHTML = `
+                    <div class="asset-info">
+                        <div class="asset-icon ${asset.symbol.toLowerCase()}-icon">
+                            ${asset.symbol === 'TON' ? '<i class="fab fa-telegram"></i>' : 
+                              asset.symbol === 'USDT' ? '<i class="fas fa-dollar-sign"></i>' : 
+                              '<i class="fab fa-ethereum"></i>'}
+                        </div>
+                        <div>
+                            <div class="asset-name">${asset.name}</div>
+                            <div class="asset-amount">${asset.amount.toFixed(2)} ${asset.symbol}</div>
+                        </div>
+                    </div>
+                    <div class="asset-value">
+                        <div class="asset-price">${(asset.amount * asset.price).toFixed(2)} $</div>
+                        <div class="asset-change ${asset.change < 0 ? 'negative' : ''}">
+                            ${asset.change >= 0 ? '+' : ''}${asset.change.toFixed(2)}%
+                        </div>
+                    </div>
+                `;
+                
+                assetsList.appendChild(assetElement);
+            });
+        }
+
+        // Рендер транзакций
+        function renderTransactions() {
+            const transactionsList = document.getElementById('transactionsList');
+            
+            if (state.wallet.transactions.length === 0) {
+                transactionsList.innerHTML = `
+                    <div style="text-align: center; padding: 40px 16px; color: var(--text-secondary);">
+                        <i class="fas fa-exchange-alt" style="font-size: 48px; margin-bottom: 16px;"></i>
+                        <p>У вас пока нет транзакций</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            transactionsList.innerHTML = '';
+            
+            // Группируем по дате
+            const grouped = state.wallet.transactions.reduce((groups, tx) => {
+                const date = new Date(tx.timestamp).toDateString();
+                if (!groups[date]) groups[date] = [];
+                groups[date].push(tx);
+                return groups;
+            }, {});
+            
+            // Отображаем
+            for (const date in grouped) {
+                const dateHeader = document.createElement('div');
+                dateHeader.className = 'assets-header';
+                dateHeader.textContent = formatDate(date);
+                transactionsList.appendChild(dateHeader);
+                
+                grouped[date].forEach(tx => {
+                    const txElement = document.createElement('div');
+                    txElement.className = 'transaction-item';
+                    txElement.innerHTML = `
+                        <div class="transaction-icon">
+                            ${tx.type === 'deposit' ? '<i class="fas fa-arrow-down"></i>' : '<i class="fas fa-arrow-up"></i>'}
+                        </div>
+                        <div class="transaction-info">
+                            <div>${tx.description || (tx.type === 'deposit' ? 'Получение' : 'Отправка')}</div>
+                            <div class="transaction-date">${formatTime(tx.timestamp)}</div>
+                        </div>
+                        <div class="transaction-amount ${tx.type === 'deposit' ? 'positive' : 'negative'}">
+                            ${tx.type === 'deposit' ? '+' : '-'}${tx.amount.toFixed(2)} ${tx.asset}
+                        </div>
+                    `;
+                    transactionsList.appendChild(txElement);
+                });
+            }
+        }
+
+        // Форматирование даты
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            if (date.toDateString() === today.toDateString()) return 'Сегодня';
+            if (date.toDateString() === yesterday.toDateString()) return 'Вчера';
+            
+            return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+        }
+
+        // Форматирование времени
+        function formatTime(timestamp) {
+            return new Date(timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Генерация QR-кода
+        function generateQRCode() {
+            QRCode.toCanvas(document.getElementById('qrCode'), `ton://transfer/${state.wallet.address}`, {
+                width: 200,
+                margin: 1,
+                color: { dark: '#000', light: '#fff' }
+            });
+            
+            document.getElementById('receiveAddress').textContent = state.wallet.address;
+        }
+
+        // Показ уведомлений
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                ${message}
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Инициализация обработчиков событий
+        function initEventListeners() {
+            // Отправка TON
+            document.getElementById('confirmSendBtn').addEventListener('click', async () => {
+                const toAddress = document.getElementById('recipientAddress').value.trim();
+                const amount = parseFloat(document.getElementById('sendAmount').value);
+                const comment = document.getElementById('sendComment').value.trim();
+                
+                if (!toAddress || !amount || isNaN(amount)) {
+                    showNotification('Заполните все поля', 'error');
+                    return;
+                }
+                
+                try {
+                    await sendTransaction(
+                        toAddress, 
+                        amount, 
+                        state.wallet.keyPair,
+                        comment
+                    );
+                    
+                    // Добавляем транзакцию в историю
+                    state.wallet.transactions.unshift({
+                        type: 'withdraw',
+                        amount,
+                        asset: 'TON',
+                        description: comment || `Отправка на ${toAddress.substring(0, 8)}...`,
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    // Обновляем баланс
+                    const tonAsset = state.wallet.assets.find(a => a.symbol === 'TON');
+                    if (tonAsset) tonAsset.amount -= amount;
+                    
+                    // Сохраняем и обновляем UI
+                    await saveWallet(state.wallet);
+                    updateUI();
+                    
+                    showNotification('Транзакция отправлена!', 'success');
+                    document.getElementById('sendModal').style.display = 'none';
+                    
+                } catch (e) {
+                    console.error('Ошибка отправки:', e);
+                    showNotification('Ошибка отправки: ' + e.message, 'error');
+                }
+            });
+            
+            // Получение TON
+            document.getElementById('copyAddressBtn').addEventListener('click', () => {
+                navigator.clipboard.writeText(state.wallet.address);
+                showNotification('Адрес скопирован', 'success');
+            });
+            
+            // Резервное копирование
+            document.getElementById('backupWalletBtn').addEventListener('click', () => {
+                const mnemonic = TonWeb.Mnemonic.bytesToMnemonic(
+                    TonWeb.utils.hexToBytes(state.wallet.mnemonic)
+                ).join(' ');
+                
+                prompt('Ваша seed-фраза (сохраните в безопасном месте):', mnemonic);
+            });
+            
+            // Остальные обработчики событий...
+        }
+
+        // Инициализация приложения
+        async function initApp() {
+            // Инициализация темы
+            const themeToggle = document.getElementById('themeToggle');
+            const icon = themeToggle.querySelector('i');
+            
+            if (state.isDarkTheme) {
+                document.body.classList.add('dark-theme');
+                icon.classList.replace('fa-moon', 'fa-sun');
+            }
+            
+            themeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-theme');
+                state.isDarkTheme = !state.isDarkTheme;
+                localStorage.setItem('theme', state.isDarkTheme ? 'dark' : 'light');
+                icon.classList.replace(state.isDarkTheme ? 'fa-moon' : 'fa-sun', 
+                                     state.isDarkTheme ? 'fa-sun' : 'fa-moon');
+            });
+            
+            // Инициализация кошелька
+            await initWallet();
+            
+            // Инициализация обработчиков событий
+            initEventListeners();
+            
+            // Инициализация графика
+            initChart();
+            
+            // Инициализация навигации
+            initNavigation();
+            
+            // Инициализация админ-панели
+            initAdminPanel();
+        }
+
+        // Инициализация графика
+        function initChart() {
+            // Ваш код для инициализации графика...
+        }
+
+        // Инициализация навигации
+        function initNavigation() {
+            // Ваш код для навигации...
+        }
+
+        // Инициализация админ-панели
+        function initAdminPanel() {
+            // Ваш код для админ-панели...
+        }
+
+        // Запуск приложения
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
